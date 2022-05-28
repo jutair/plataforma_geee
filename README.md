@@ -1,0 +1,2 @@
+# plataforma_geee
+1- Plataforma baseada em opensource como Arduino e ESP que possibilita realizar medição do consumo de energia e enviar os dados para uma planilha do Google Drive. 2- Ferramenta de gestão de energia desenvolvida em programação R que fornece ao usuário meios para realizar de forma simples análises da sua gestão de energia como: consumo em tempo real, análise de consumo por determinado circuito,  histórico de consumo, alertas e outros dados estatísticos. 
