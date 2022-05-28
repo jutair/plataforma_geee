@@ -9,6 +9,7 @@ library(googledrive)
 library(plyr) 
 library(dplyr)
 library(plotly)
+library(shinydashboard)
 ###########################
 #Autenticando o acesso ao google -----------------------------------------------
 options(gargle_oauth_cache = ".secrets")
@@ -19,15 +20,18 @@ gs4_auth(token = drive_token())
 planilha<- read_sheet("https://docs.google.com/spreadsheets/d/11P9UTyCBhKfqkWL37UmZTSi8onVnaGCYW7rZaRlD6iw/edit#gid=0")
 ####################Processamento e extração########################################
 data<- c(planilha$data) #Extrai os dados da coluna referente a data
+data<- c(as.character.Date(data, "%d/%m/%Y"))#Converte os dados para formato Data/Hora
 hora<- c(planilha$hora) #Extrai os dados da coluna referente a hora
-hora<- c(as_datetime(hora)) #Converte os dados para formato Data/Hora
+hora<- c(as.character.Date(hora, format ="%H:%M")) #Converte os dados para formato Data/Hora
+assign("kwh", 0.0002777778) #Fator de de conversão de KW/s para KW/h
+assign("vkwh", 0.92) #Valor do KW/h para o estado SP, consumidor residencial
 circuito<- c(planilha$circuito) #Extrai os dados da coluna referente ao circuito (onde o sensor foi instalado)
 mean_corr<- c(planilha$mean_corr) #Extrai os dados da coluna referente a media da corrente obtida pelos sensores
 mean_corr<- c(as.numeric(mean_corr)) #Converte os dados para do tipo numérico
 mean_tensao<- c(planilha$mean_tensao) #Extrai os dados da coluna referente a media da tensao obtida pelos sensores
 mean_tensao <-c(as.numeric(as.character(mean_tensao))) #Converte os dados para numero
 sum_potencia<- c(planilha$sum_potencia) #Extrai os dados da coluna referente a potencia consumida no intervalo do tempo (a cada 10 minutos)
-sum_potencia<- c(as.numeric(sum_potencia))#Converte os dados para do tipo numérico
+sum_potencia<- c(as.numeric(sum_potencia))*kwh#Converte os dados para do tipo numérico e KW/s para KW/h
 dataset<- data.frame(data, hora, circuito,mean_corr, mean_tensao, sum_potencia) #Cria o dataframe para o servidor
 dataset_c1 <- dataset[dataset$circuito == "circuito01",]#Extrai dados do circuito 1
 dataset_c2 <-dataset[dataset$circuito =="circuito02",]#Extrai dados do circuito 2
@@ -36,7 +40,7 @@ cons_c2 <-sum(dataset_c2$sum_potencia, na.rm = TRUE)#Soma o total de Watts comsu
 t_consumo <-sum(dataset$sum_potencia, na.rm = TRUE)#Soma total do consumo do consumo de todos os circuitos
 mean_conc1 <-mean(dataset_c1$sum_potencia, na.rm = TRUE)#Tira a média do consumo do circuito 1/Elimina os valores não numéricos
 mean_conc2 <-mean(dataset_c2$sum_potencia, na.rm = TRUE)#Tira a média do consumo do circuito 2/Elimina os valores não numéricos
-lisreg_periodo <-tail(dataset, 144) #Seleciona os registros das últimas 24 horas
+lisreg_periodo <-tail(dataset, 144)#Seleciona os registros das últimas 24 horas
 mean_consumo <-mean(dataset$sum_potencia) #Tira a média do consumo/Elimina os valores não numéricos
 max_cons_c1 <-max(dataset_c1$sum_potencia, na.rm = TRUE)#Retorna o valor máximo do consumo do circuito 1/Elimina os valores não numéricos
 max_cons_c2 <-max(dataset_c2$sum_potencia, na.rm = TRUE)#Retorna o valor máximo do consumo do circuito 2/Elimina os valores não numéricos
@@ -48,14 +52,16 @@ ser_max_c1 <-max(dataset_c1$sum_potencia, na.rm = TRUE)#Filtra a linha do consum
 lisreg<- tail(dataset, 20) #Mostra os últimos registros enviados
 lisreg_c1 <-tail(dataset_c1) #Mostra os últimos registros do circuito 1
 lisreg_c2 <-tail(dataset_c2) #Mostra os últimos registros do circuito 1
+fatura_h <- t_consumo*vkwh #Calcula o atual valor da fatura
 
-
+#processar o o lisreg para as tabelas
+lisregt_periodo <- data.frame(data, hora, circuito, mean_corr, mean_tensao, sum_potencia*3600)
+lisregt_periodo<- rename(lisregt_periodo,c("Data" = "data", "Hora" ="hora", "Circuito" = "circuito", "Corrente Média"= "mean_corr", "Tensão Média"="mean_tensao", "KW"= "sum_potencia...3600"))
+lisregt_periodo<- tail(lisregt_periodo, 10)
 server <- function(input, output, session) { #Função mestre de entrada, saida e sessão do servidor
   
 #Filto de reatividade para pesquisa
-  df <- reactive({
-  
- } )
+
   
 #Saida de dados extraídos do banco de dados 
   
@@ -65,11 +71,30 @@ server <- function(input, output, session) { #Função mestre de entrada, saida 
   output$consumo <- renderPrint({ 
     t_consumo
   })
-  output$t_mconsumo <- renderText({ 
-    "MEDIA DE CONSUMO EM KW:" 
+  
+  output$t_tarifa <- renderText({ 
+    "VALOR DO KW/s RESIDENCIAL:" 
   })
-  output$m_consumo <- renderPrint({ 
-    mean_consumo
+  
+  output$v_tarifa <- renderPrint({ 
+    kwh
+  })
+  
+  output$t_fatura <- renderText({ 
+    "VALOR DA FATURA:" 
+  })
+  
+  output$v_fatura <- renderPrint({ 
+    fatura_h
+  })
+  
+  
+  output$p_consumoc <- renderText({ 
+    "PERCENTUAL DO CONSUMO POR CIRCUITO:" 
+  })
+  
+  output$tex_ln <- renderText({ 
+    "GRÁFICO DO CONSUMO NAS ÚLTIMAS 24 HORAS" 
   })
   
   
@@ -83,7 +108,7 @@ server <- function(input, output, session) { #Função mestre de entrada, saida 
     )
     
     fig<- plot_ly(df_piecons, labels = ~circuito, values = ~consumo, type = 'pie')
-    fig <- fig %>% layout(title = 'Faixa de consumo por circuito',
+    fig <- fig %>% layout(title = '',
                           xaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
                           yaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE))
     
@@ -146,11 +171,8 @@ server <- function(input, output, session) { #Função mestre de entrada, saida 
     "10 ÚLTIMOS REGISTROS MEDIDOS PELOS SENORES:" 
   })
   output$l_reg <- renderTable({ 
-    lisreg
+    lisregt_periodo
   })
  
 
   }
-
- 
-
