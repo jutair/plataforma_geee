@@ -9,6 +9,7 @@ library(googledrive)
 library(plyr) 
 library(dplyr)
 library(plotly)
+library(shinydashboard)
 ###########################
 #Autenticando o acesso ao google -----------------------------------------------
 options(gargle_oauth_cache = ".secrets")
@@ -19,24 +20,55 @@ gs4_auth(token = drive_token())
 dataset<- read_sheet("https://docs.google.com/spreadsheets/d/11P9UTyCBhKfqkWL37UmZTSi8onVnaGCYW7rZaRlD6iw/edit?usp=sharing")
 ###########################
 
+
 ui <- fluidPage(
-  # Tema da página
+  
+  # Tema
   theme = shinytheme("flatly"),
   
-  # Título da página                
-  titlePanel(p("SISTEMA DE MONITORAMENTO DE CONSUMO DE ENERGIA", style="text-align:center" )),
+  # Título                
+  titlePanel(p("PLATAFOMRA DE GESTÃO DE ENERGIA", style="text-align:center" )),
   br(),
   br(),
-
-  #Saida dos dados extraídos da base de dados
-  textOutput("t_consumo"),
-  verbatimTextOutput("consumo"),
-  textOutput("t_mconsumo"),
-  verbatimTextOutput("m_consumo"),
-  plotlyOutput('line_con'),
-  #plotOutput("grapot", click = "plot_click"),  #Chama do servidor o gráfico da linha de história do consumo dos circuitos
-  plotlyOutput('piecons'), #Chama do servidor o gráfico de pizza do consumo dos circuitos
-  textOutput("u_reg"),
-  tableOutput('l_reg'),
   
+  sidebarLayout(
+    
+    
+    sidebarPanel(
+      
+      verticalLayout( 
+    
+        textOutput("t_consumo"),
+        verbatimTextOutput("consumo"),
+        textOutput("t_tarifa"),
+        verbatimTextOutput("v_tarifa"),
+        textOutput("t_fatura"),
+        verbatimTextOutput("v_fatura"),
+        textOutput("p_consumoc"),
+        plotlyOutput('piecons'), #Chama do servidor o gráfico de pizza do consumo dos circuitos
+      
+        )
+      
+      
+    ),
+  
+    
+      mainPanel(
+        titlePanel(p("GRÁFICOS E TABELAS", style="text-align:center" )),
+        tabsetPanel(
+          
+          
+          tabPanel("Hoje", 
+                   verbatimTextOutput("tex_ln"),
+                    plotlyOutput('line_con'), #Chama o gráfico do
+                   ),
+                  
+          tabPanel("Tabela", 
+                   verbatimTextOutput("u_reg"),
+                   tableOutput('l_reg'),
+                   ),
+        ),
+        
+      )
+  )
 )
