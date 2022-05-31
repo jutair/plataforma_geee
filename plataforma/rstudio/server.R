@@ -54,6 +54,14 @@ lisreg_c1 <-tail(dataset_c1) #Mostra os últimos registros do circuito 1
 lisreg_c2 <-tail(dataset_c2) #Mostra os últimos registros do circuito 1
 fatura_h <- t_consumo*vkwh #Calcula o atual valor da fatura
 
+#############################Comandos importantes para limpeza extração dos dados######################################
+#is.na(my_df) #Retorna se valores NA no dataset
+#colSums(is.na(my_df)) #Retorna a coluna que possui valor NA
+#colSums(is.na(dataset)) # Retorna o número das colunas que possuem valores NA
+#which(colSums(is.na(dataset))>0) # Retorna o nome e núemro da coluna que possui valor NA
+#colSums(is.na(dataset)) > 0 # Retorna verdadeiro e falso para colunas com valor NA
+
+
 #processar o o lisreg para as tabelas
 lisregt_periodo <- data.frame(data, hora, circuito, mean_corr, mean_tensao, sum_potencia*3600)
 lisregt_periodo<- rename(lisregt_periodo,c("Data" = "data", "Hora" ="hora", "Circuito" = "circuito", "Corrente Média"= "mean_corr", "Tensão Média"="mean_tensao", "KW"= "sum_potencia...3600"))
